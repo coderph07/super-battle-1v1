@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#07111f">
+<title>Super Battle 1v1</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:Arial,sans-serif;background:#07111f}
+body{display:flex;align-items:center;justify-content:center}
+#app{position:relative;width:100%;height:100%;overflow:hidden}
+.screen{position:absolute;inset:0;display:none;align-items:center;justify-content:center}
+.screen.active{display:flex}
+#menu{background:radial-gradient(circle at 50% -10%,#7de8ff,transparent 35%),linear-gradient(145deg,#0d6efd,#12b886 70%,#7bdc52)}
+.card{width:min(94%,560px);padding:28px;border-radius:28px;background:rgba(255,255,255,.96);box-shadow:0 25px 80px #0007;text-align:center}
+.logo{font-size:clamp(42px,9vw,72px);font-weight:1000;line-height:.9;color:#f52e38;text-shadow:3px 3px 0 #fff,7px 7px 0 #101010;letter-spacing:-2px}
+.sub{font-weight:900;color:#243244;margin:12px 0 22px}
+input,select{width:100%;padding:15px;border:2px solid #dce3eb;border-radius:14px;font-size:17px;outline:0;margin:6px 0;background:#fff}
+button{width:100%;padding:15px;border:0;border-radius:14px;margin-top:9px;font-size:17px;font-weight:1000;cursor:pointer;transition:.12s}
+button:active{transform:scale(.97)}
+.primary{background:#ef3030;color:#fff}.blue{background:#287ee8;color:#fff}.green{background:#18a957;color:#fff}.dark{background:#182235;color:#fff}.light{background:#e9eef5;color:#152033}
+#status{min-height:24px;margin-top:12px;font-weight:800;color:#c62828}
+.small{font-size:12px;color:#5c6877;line-height:1.45}
+#lobby{background:linear-gradient(145deg,#4bc8ff,#8ce06e)}
+.roomcode{font-size:40px;letter-spacing:8px;font-weight:1000;color:#e32929}
+.player{padding:13px;border-radius:13px;margin:9px 0;font-weight:900}.p1{background:#ffe1e1}.p2{background:#dfeaff}
+.wait{animation:pulse 1.1s infinite}@keyframes pulse{50%{opacity:.4}}
+#gameScreen{background:#63d3ff}
+#gameCanvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated}
+#hud{position:absolute;top:0;left:0;right:0;display:grid;grid-template-columns:1fr auto 1fr;gap:8px;padding:10px;z-index:5;pointer-events:none}
+.hud{background:#07111dcc;color:#fff;border:1px solid #ffffff30;border-radius:13px;padding:9px 11px;font-weight:900;font-size:clamp(11px,2vw,16px)}
+.hud:nth-child(3){text-align:right}
+.bar{height:8px;background:#3b4351;border-radius:99px;margin-top:5px;overflow:hidden}.fill{height:100%;width:100%;background:#44e06f;transition:width .12s}
+#timer{font-size:24px;text-align:center;min-width:65px}
+#message,#selectOverlay{position:absolute;z-index:30;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92%,520px);padding:24px;border-radius:22px;background:#07111fee;color:#fff;text-align:center;box-shadow:0 20px 70px #0009}
+#message{display:none}.messageTitle{font-size:clamp(32px,8vw,58px);font-weight:1000;margin:0 0 8px}
+#selectOverlay{display:none}.chars{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:15px 0}.char{padding:12px;border-radius:15px;background:#ffffff14;border:2px solid transparent;cursor:pointer}.char.sel{border-color:#ffd72d;background:#ffffff25}.preview{width:54px;height:70px;margin:auto;position:relative}.preview i{position:absolute;display:block}.preview .head{width:26px;height:26px;left:14px;top:4px;background:#ffd0a0;border-radius:7px}.preview .body{width:30px;height:34px;left:12px;top:29px;border-radius:6px}
+#controls{position:absolute;left:0;right:0;bottom:0;height:145px;padding:14px;display:flex;justify-content:space-between;align-items:center;z-index:10;pointer-events:none}
+.cg{display:flex;gap:10px;pointer-events:auto}.ctl{width:clamp(54px,15vw,84px);height:clamp(54px,15vw,84px);border-radius:50%;border:3px solid #fff8;background:#0007;color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:1000;touch-action:none}.ctl.active{background:#fff5}
+.attack{width:clamp(64px,17vw,94px);height:clamp(64px,17vw,94px);background:#e52f39}
+#desktopHint{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:4;color:#fff;background:#0007;padding:6px 12px;border-radius:20px;font-size:11px}
+#toast{position:absolute;top:70px;left:50%;transform:translateX(-50%);z-index:40;background:#07111fee;color:#fff;padding:10px 16px;border-radius:14px;font-weight:900;display:none}
+@media(min-width:900px){#controls{opacity:.32}#controls:hover{opacity:1}}
+</style>
+</head>
+<body>
+<div id="app">
+
+<section id="menu" class="screen active">
+ <div class="card">
+  <div class="logo">SUPER<br>BATTLE</div>
+  <div class="sub">ONLINE 1v1 PLATFORM FIGHTER</div>
+  <input id="nameInput" maxlength="12" placeholder="Player name">
+  <select id="charInput"><option value="red">🔥 Blaze</option><option value="blue">⚡ Nova</option><option value="green">🌿 Rex</option></select>
+  <input id="roomInput" maxlength="8" placeholder="Room code to join">
+  <button class="primary" id="createBtn">CREATE ROOM</button>
+  <button class="blue" id="joinBtn">JOIN ROOM</button>
+  <button class="dark" id="howBtn">HOW TO PLAY</button>
+  <div id="status"></div>
+  <div class="small">Create a room, send the 6-character code to Player 2, then battle.</div>
+ </div>
+</section>
+
+<section id="lobby" class="screen">
+ <div class="card">
+  <h1>⚔️ BATTLE ROOM</h1>
+  <div class="roomcode" id="roomCode">------</div>
+  <p>Share this code with Player 2.</p>
+  <div class="player p1">🔴 P1: <span id="player1Name">Waiting...</span></div>
+  <div class="player p2">🔵 P2: <span id="player2Name">Waiting...</span></div>
+  <div id="lobbyStatus" class="wait">Waiting for Player 2...</div>
+  <button class="light" id="copyBtn">COPY ROOM CODE</button>
+  <button class="dark" id="leaveBtn">LEAVE ROOM</button>
+ </div>
+</section>
+
+<section id="gameScreen" class="screen">
+ <canvas id="gameCanvas"></canvas>
+ <div id="hud">
+  <div class="hud">🔴 <span id="p1NameHud">P1</span> <span id="p1HpText">100</span>/100<div class="bar"><div id="p1Hp" class="fill"></div></div> 🪙 <span id="p1Coins">0</span></div>
+  <div class="hud" id="timer">120</div>
+  <div class="hud">🔵 <span id="p2NameHud">P2</span> <span id="p2HpText">100</span>/100<div class="bar"><div id="p2Hp" class="fill"></div></div> 🪙 <span id="p2Coins">0</span></div>
+ </div>
+ <div id="toast"></div>
+ <div id="selectOverlay">
+  <h2>CHOOSE YOUR FIGHTER</h2>
+  <div class="chars">
+   <div class="char sel" data-char="red"><div class="preview"><i class="head"></i><i class="body" style="background:#ef3340"></i></div>🔥 Blaze</div>
+   <div class="char" data-char="blue"><div class="preview"><i class="head"></i><i class="body" style="background:#287ee8"></i></div>⚡ Nova</div>
+   <div class="char" data-char="green"><div class="preview"><i class="head"></i><i class="body" style="background:#17a957"></i></div>🌿 Rex</div>
+  </div>
+  <button class="primary" id="readyBtn">READY</button>
+ </div>
+ <div id="message">
+  <div class="messageTitle" id="messageTitle"></div>
+  <p id="messageText"></p>
+  <button class="primary" id="rematchBtn">REMATCH</button>
+  <button class="dark" id="menuBtn">MAIN MENU</button>
+ </div>
+ <div id="controls">
+  <div class="cg"><div class="ctl" id="leftBtn">◀</div><div class="ctl" id="rightBtn">▶</div></div>
+  <div class="cg"><div class="ctl" id="jumpBtn">⬆</div><div class="ctl attack" id="attackBtn">👊</div><div class="ctl" id="runBtn">⚡</div></div>
+ </div>
+ <div id="desktopHint">A/D or ←/→ Move • W/Space/↑ Jump • Shift Run • J/F Attack</div>
+</section>
+
+</div>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import {getDatabase,ref,set,get,update,onValue,onDisconnect,remove,runTransaction} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js";
+import {getAuth,signInAnonymously} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBlWQZLalDQH60ndC1g7Glu6pMcdUfnQ_o",
+  authDomain: "super-battle-1v1-55ebf.firebaseapp.com",
+
+  databaseURL: "https://super-battle-1v1-55ebf-default-rtdb.asia-southeast1.firebasedatabase.app",
+
+  projectId: "super-battle-1v1-55ebf",
+  storageBucket: "super-battle-1v1-55ebf.firebasestorage.app",
+  messagingSenderId: "342232114468",
+  appId: "1:342232114468:web:f10e719163c5371fa43fb3"
+};
+
+const app=initializeApp(firebaseConfig),db=getDatabase(app),auth=getAuth(app);
+let currentUser=null;
+try{currentUser=(await signInAnonymously(auth)).user}catch(e){console.error(e);document.querySelector("#status").textContent="Firebase login failed. Enable Anonymous Authentication."}
+
+const $=s=>document.querySelector(s);
+const menu=$("#menu"),lobby=$("#lobby"),gameScreen=$("#gameScreen"),status=$("#status");
+const canvas=$("#gameCanvas"),ctx=canvas.getContext("2d");
+let roomId=null,myPlayer=null,roomUnsub=null,gameRunning=false,gameOver=false,ready=false;
+let selectedChar=$("#charInput").value,lastSent=0,lastFrame=0,roundEnd=0,countdown=120;
+const world={w:1400,h:700};
+const P={w:38,h:52,speed:4.5,run:7.2,jump:-12,gravity:.66,maxHp:100};
+const local={x:180,y:400,vx:0,vy:0,hp:100,coins:0,facing:1,grounded:false,attackUntil:0,attackCooldown:0,hitId:0,char:"red"};
+const remote={x:1050,y:400,vx:0,vy:0,hp:100,coins:0,facing:-1,char:"blue",attackUntil:0};
+const keys={left:false,right:false,jump:false,run:false,attack:false};
+let cameraX=0,particles=[],floating=[],remoteData=null;
+const platforms=[
+{x:0,y:620,w:1400,h:80},{x:0,y:480,w:230,h:25},{x:310,y:480,w:230,h:25},{x:620,y:480,w:230,h:25},{x:930,y:480,w:300,h:25},
+{x:120,y:350,w:210,h:25},{x:455,y:330,w:210,h:25},{x:790,y:350,w:210,h:25},{x:1100,y:280,w:180,h:25}
+];
+const baseCoins=[{x:160,y:435},{x:420,y:435},{x:720,y:435},{x:1040,y:435},{x:220,y:305},{x:550,y:285},{x:880,y:305},{x:1190,y:235}];
+let coins=baseCoins.map(c=>({...c,taken:false}));
+const baseEnemies=[{x:360,y:440,w:34,h:40,vx:1.4,min:310,max:500,alive:true},{x:820,y:310,w:34,h:40,vx:1.2,min:790,max:965,alive:true}];
+let enemies=baseEnemies.map(e=>({...e}));
+
+function show(s){[menu,lobby,gameScreen].forEach(x=>x.classList.remove("active"));s.classList.add("active")}
+function roomCode(){const a="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";return Array.from({length:6},()=>a[Math.floor(Math.random()*a.length)]).join("")}
+function toast(t){$("#toast").textContent=t;$("#toast").style.display="block";clearTimeout(toast.t);toast.t=setTimeout(()=>$("#toast").style.display="none",1500)}
+function resize(){const d=Math.min(devicePixelRatio||1,2);canvas.width=innerWidth*d;canvas.height=innerHeight*d;canvas.style.width=innerWidth+"px";canvas.style.height=innerHeight+"px";ctx.setTransform(d,0,0,d,0,0)}
+addEventListener("resize",resize);resize();
+
+$("#createBtn").onclick=async()=>{
+ if(!currentUser)return;
+ roomId=roomCode();myPlayer="p1";selectedChar=$("#charInput").value;
+ const rr=ref(db,"rooms/"+roomId);
+ await set(rr,{createdAt:Date.now(),status:"waiting",round:0,players:{p1:playerPayload("Player 1",selectedChar,180,400)}});
+ await onDisconnect(rr).remove();openLobby();listenRoom();
+};
+$("#joinBtn").onclick=async()=>{
+ if(!currentUser)return;
+ const code=$("#roomInput").value.trim().toUpperCase();
+ if(!code){status.textContent="Enter a room code.";return}
+ const rr=ref(db,"rooms/"+code),snap=await get(rr);
+ if(!snap.exists()){status.textContent="Room does not exist.";return}
+ if(snap.val().players?.p2){status.textContent="Room is full.";return}
+ roomId=code;myPlayer="p2";selectedChar=$("#charInput").value;
+ await update(rr,{"players/p2":playerPayload("Player 2",selectedChar,1120,400),status:"playing",round:1,startedAt:Date.now()});
+ await onDisconnect(ref(db,`rooms/${roomId}/players/p2`)).remove();
+ openLobby();listenRoom();
+};
+function playerPayload(fallback,char,x){return{uid:currentUser.uid,name:($("#nameInput").value.trim()||fallback),char,x,y:400,vx:0,vy:0,hp:100,coins:0,facing:myPlayer==="p2"?-1:1,attack:0,attackId:0,ready:false}}
+function openLobby(){$("#roomCode").textContent=roomId;show(lobby)}
+$("#copyBtn").onclick=async()=>{try{await navigator.clipboard.writeText(roomId);toast("Room code copied!")}catch{toast("Your room code: "+roomId)}};
+$("#leaveBtn").onclick=leaveRoom;
+
+function listenRoom(){
+ if(roomUnsub)return;
+ roomUnsub=onValue(ref(db,"rooms/"+roomId),snap=>{
+  if(!snap.exists()){returnToMenu();return}
+  const r=snap.val(),p1=r.players?.p1,p2=r.players?.p2;
+  $("#player1Name").textContent=p1?.name||"Waiting...";
+  $("#player2Name").textContent=p2?.name||"Waiting...";
+  if(p1&&p2){
+   $("#lobbyStatus").textContent=r.status==="playing"?"PLAYER 2 CONNECTED!":"Both players connected";
+   if(r.status==="playing"&&!gameRunning&&!gameOver)startGame();
+  }else $("#lobbyStatus").textContent="Waiting for Player 2...";
+  if(p1&&p2)updateRemote(r);
+  updateHud(p1,p2);
+  if(r.status==="finished"&&r.winner)showWinner(r.winner,r.reason||"KO");
+  if(r.status==="rematch"&&r.round!==roundEnd){roundEnd=r.round;resetRound();startGame()}
+ });
+}
+function updateRemote(r){
+ const o=myPlayer==="p1"?r.players?.p2:r.players?.p1;if(!o)return;
+ remoteData=o;remote.x=o.x??remote.x;remote.y=o.y??remote.y;remote.vx=o.vx??0;remote.vy=o.vy??0;
+ remote.hp=o.hp??100;remote.coins=o.coins??0;remote.facing=o.facing??-1;remote.char=o.char||"blue";
+ remote.attackUntil=(o.attack||0)+180;remote.attackId=o.attackId||0;
+}
+function updateHud(p1,p2){
+ $("#p1NameHud").textContent=p1?.name||"P1";$("#p2NameHud").textContent=p2?.name||"P2";
+ const a=p1?.hp??100,b=p2?.hp??100;$("#p1HpText").textContent=Math.max(0,a);$("#p2HpText").textContent=Math.max(0,b);
+ $("#p1Hp").style.width=Math.max(0,a)+"%";$("#p2Hp").style.width=Math.max(0,b)+"%";
+ $("#p1Coins").textContent=p1?.coins??0;$("#p2Coins").textContent=p2?.coins??0;
+}
+
+function startGame(){
+ if(gameRunning)return;
+ gameRunning=true;gameOver=false;ready=true;$("#message").style.display="none";show(gameScreen);
+ local.char=selectedChar;local.x=myPlayer==="p1"?170:1120;local.y=400;local.vx=0;local.vy=0;local.hp=100;local.coins=0;local.attackUntil=0;local.attackCooldown=0;
+ countdown=120;lastFrame=performance.now();requestAnimationFrame(loop);
+}
+function resetRound(){coins=baseCoins.map(c=>({...c,taken:false}));enemies=baseEnemies.map(e=>({...e}));local.hp=100;local.coins=0;local.vx=0;local.vy=0;local.attackUntil=0}
+function updatePlayer(){
+ const speed=keys.run?P.run:P.speed;
+ if(keys.left){local.vx=-speed;local.facing=-1}else if(keys.right){local.vx=speed;local.facing=1}else local.vx*=.78;
+ if(keys.jump&&local.grounded){local.vy=P.jump;local.grounded=false;keys.jump=false}
+ local.vy+=P.gravity;local.x+=local.vx;local.y+=local.vy;local.grounded=false;
+ for(const p of platforms)if(local.x+P.w>p.x&&local.x<p.x+p.w&&local.y+P.h>=p.y&&local.y+P.h<=p.y+p.h+12&&local.vy>=0){local.y=p.y-P.h;local.vy=0;local.grounded=true}
+ local.x=Math.max(0,Math.min(world.w-P.w,local.x));
+ if(local.y>world.h+80){damageLocal(20,"fall");local.x=myPlayer==="p1"?170:1120;local.y=350;local.vy=0}
+ collectCoins();enemyCollision();handleAttack();
+}
+function collectCoins(){for(const c of coins)if(!c.taken&&Math.abs(local.x+P.w/2-c.x)<30&&Math.abs(local.y+P.h/2-c.y)<40){c.taken=true;local.coins++;burst(c.x,c.y,"#ffd52b",10)}}
+function enemyCollision(){for(const e of enemies){if(!e.alive)continue;e.x+=e.vx;if(e.x<e.min||e.x>e.max)e.vx*=-1;if(local.x<e.x+e.w&&local.x+P.w>e.x&&local.y<e.y+e.h&&local.y+P.h>e.y){if(local.vy>2){e.alive=false;local.vy=-9;burst(e.x,e.y,"#ff7043",16)}else damageLocal(8,"enemy")}}}
+function attackBox(p){return{x:p.facing>0?p.x+P.w-2:p.x-48,y:p.y+10,w:50,h:30}}
+function overlap(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
+function handleAttack(){
+ if(keys.attack&&performance.now()>local.attackCooldown){keys.attack=false;local.attackCooldown=performance.now()+420;local.attackUntil=performance.now()+180;local.hitId++;burst(local.x+local.facing*35+20,local.y+25,"#fff",5);sendState(true)}
+ if(performance.now()<local.attackUntil&&remoteData){
+  const r={x:remote.x,y:remote.y,w:P.w,h:P.h};
+  if(overlap(attackBox(local),r)&&remoteData.lastHit!==local.hitId){remoteData.lastHit=local.hitId;hitRemote(local.hitId)}
+ }
+}
+async function hitRemote(hitId){
+ if(!roomId)return;
+ const target=myPlayer==="p1"?"p2":"p1",rr=ref(db,`rooms/${roomId}/players/${target}`);
+ await runTransaction(rr,p=>{if(!p)return p;if(p.lastHit===hitId)return p;const dx=local.x-p.x;const dir=p.x>local.x?1:-1;const hp=Math.max(0,(p.hp??100)-12);return {...p,hp,lastHit:hitId,x:Math.max(0,Math.min(world.w-P.w,p.x+dir*55)),vx:dir*7,vy:-5}});
+ toast("HIT! -12 HP");
+}
+async function damageLocal(amount,reason){if(gameOver)return;local.hp=Math.max(0,local.hp-amount);burst(local.x+20,local.y+20,"#ff3344",12);if(local.hp<=0)await finishGame(myPlayer==="p1"?"p2":"p1","KO")}
+async function sendState(force=false){
+ if(!roomId||!myPlayer)return;const now=performance.now();if(!force&&now-lastSent<55)return;lastSent=now;
+ await update(ref(db,`rooms/${roomId}/players/${myPlayer}`),{x:Math.round(local.x),y:Math.round(local.y),vx:+local.vx.toFixed(1),vy:+local.vy.toFixed(1),hp:local.hp,coins:local.coins,facing:local.facing,char:local.char,attack:local.attackUntil>now?now:0,attackId:local.hitId});
+}
+async function finishGame(winner,reason){
+ if(gameOver||!roomId)return;gameOver=true;gameRunning=false;
+ await update(ref(db,"rooms/"+roomId),{status:"finished",winner,reason});
+}
+function showWinner(winner,reason){
+ gameOver=true;gameRunning=false;$("#message").style.display="block";
+ $("#messageTitle").textContent=winner===myPlayer?"🏆 YOU WIN!":"💥 YOU LOSE!";
+ $("#messageText").textContent=winner===myPlayer?`Victory by ${reason}!`:`Player ${winner==="p1"?"1":"2"} wins by ${reason}.`;
+}
+$("#rematchBtn").onclick=async()=>{
+ if(!roomId)return;const r=await get(ref(db,"rooms/"+roomId));if(!r.exists())return;
+ const round=(r.val().round||0)+1;
+ await update(ref(db,"rooms/"+roomId),{status:"rematch",winner:null,reason:null,round});
+ resetRound();gameOver=false;$("#message").style.display="none";startGame();
+};
+$("#menuBtn").onclick=leaveRoom;
+async function leaveRoom(){gameRunning=false;gameOver=false;if(roomUnsub){roomUnsub();roomUnsub=null}if(roomId)try{await remove(ref(db,"rooms/"+roomId))}catch(e){}returnToMenu()}
+function returnToMenu(){roomId=null;myPlayer=null;show(menu);$("#message").style.display="none";$("#status").textContent=""}
+
+function draw(){
+ const w=innerWidth,h=innerHeight;
+ const g=ctx.createLinearGradient(0,0,0,h);g.addColorStop(0,"#64d8ff");g.addColorStop(1,"#b7f18a");ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+ cameraX=Math.max(0,Math.min(world.w-w,local.x-w/2));
+ drawClouds(w);drawPlatforms();drawCoins();drawEnemies();drawPlayer(remote,remote.char,false);drawPlayer(local,local.char,true);drawParticles();drawFloating();
+}
+function drawClouds(w){ctx.fillStyle="#fff9";for(let i=0;i<7;i++){let x=((i*260-cameraX*.2)%(w+320))-160,y=80+(i%3)*75;ctx.beginPath();ctx.arc(x,y,28,0,7);ctx.arc(x+35,y-15,38,0,7);ctx.arc(x+75,y,27,0,7);ctx.fill()}}
+function drawPlatforms(){for(const p of platforms){let x=p.x-cameraX;ctx.fillStyle="#65bd42";ctx.fillRect(x,p.y,p.w,p.h);ctx.fillStyle="#9b5a2e";ctx.fillRect(x,p.y+9,p.w,p.h-9);ctx.fillStyle="#9be85d";ctx.fillRect(x,p.y,p.w,8)}}
+function drawCoins(){for(const c of coins)if(!c.taken){let x=c.x-cameraX;ctx.fillStyle="#ffd72b";ctx.beginPath();ctx.arc(x,c.y,11,0,7);ctx.fill();ctx.strokeStyle="#b87900";ctx.lineWidth=3;ctx.stroke();ctx.fillStyle="#fff4a3";ctx.fillRect(x-3,c.y-7,4,10)}}
+function drawEnemies(){for(const e of enemies)if(e.alive){let x=e.x-cameraX;ctx.fillStyle="#733d25";ctx.fillRect(x,e.y+8,e.w,e.h-8);ctx.fillStyle="#fff";ctx.fillRect(x+6,e.y+13,7,7);ctx.fillRect(x+21,e.y+13,7,7);ctx.fillStyle="#111";ctx.fillRect(x+8,e.y+15,4,4);ctx.fillRect(x+23,e.y+15,4,4)}}
+const colors={red:"#ef3340",blue:"#287ee8",green:"#17a957"};
+function drawPlayer(p,char,isLocal){
+ let x=p.x-cameraX,y=p.y,c=colors[char]||"#e72d2d";ctx.save();
+ if((isLocal?local.attackUntil:remote.attackUntil)>performance.now()){let a=attackBox(p);ctx.fillStyle="#ffffff66";ctx.beginPath();ctx.arc(a.x-cameraX+a.w/2,a.y+15,27,0,7);ctx.fill()}
+ ctx.fillStyle=c;ctx.fillRect(x+6,y+19,26,25);ctx.fillStyle="#ffd0a0";ctx.fillRect(x+8,y+7,22,22);
+ ctx.fillStyle=c;ctx.fillRect(x+3,y+3,31,8);ctx.fillRect(x+10,y,18,6);ctx.fillStyle="#111";let ex=p.facing>0?x+23:x+10;ctx.fillRect(ex,y+13,4,4);
+ ctx.fillStyle="#333";ctx.fillRect(x+5,y+43,10,8);ctx.fillRect(x+22,y+43,10,8);ctx.restore()
+}
+function burst(x,y,color,n){for(let i=0;i<n;i++)particles.push({x,y,vx:(Math.random()-.5)*7,vy:(Math.random()-.8)*7,life:30,color})}
+function drawParticles(){for(let i=particles.length-1;i>=0;i--){let p=particles[i];p.x+=p.vx;p.y+=p.vy;p.vy+=.2;p.life--;ctx.globalAlpha=p.life/30;ctx.fillStyle=p.color;ctx.fillRect(p.x-cameraX,p.y,5,5);if(p.life<=0)particles.splice(i,1)}ctx.globalAlpha=1}
+function drawFloating(){for(let i=floating.length-1;i>=0;i--){let f=floating[i];f.y--;f.life--;ctx.globalAlpha=f.life/30;ctx.fillStyle="#fff";ctx.font="bold 18px Arial";ctx.fillText(f.t,f.x-cameraX,f.y);if(f.life<=0)floating.splice(i,1)}ctx.globalAlpha=1}
+
+function loop(t){
+ if(!gameRunning)return;
+ const dt=Math.min(40,t-lastFrame);lastFrame=t;
+ updatePlayer();draw();sendState();
+ countdown=Math.max(0,countdown-dt/1000);$("#timer").textContent=Math.ceil(countdown);
+ if(countdown<=0){const winner=local.hp>=remote.hp?myPlayer:(myPlayer==="p1"?"p2":"p1");finishGame(winner,"TIME")}
+ requestAnimationFrame(loop);
+}
+
+function setKey(k,v){keys[k]=v}
+addEventListener("keydown",e=>{
+ const k=e.key.toLowerCase();
+ if(k==="a"||e.key==="ArrowLeft")setKey("left",true);
+ if(k==="d"||e.key==="ArrowRight")setKey("right",true);
+ if(k==="w"||e.key==="ArrowUp"||e.key===" ") {setKey("jump",true);e.preventDefault()}
+ if(k==="shift")setKey("run",true);
+ if(k==="j"||k==="f")setKey("attack",true);
+});
+addEventListener("keyup",e=>{
+ const k=e.key.toLowerCase();
+ if(k==="a"||e.key==="ArrowLeft")setKey("left",false);
+ if(k==="d"||e.key==="ArrowRight")setKey("right",false);
+ if(k==="w"||e.key==="ArrowUp"||e.key===" ")setKey("jump",false);
+ if(k==="shift")setKey("run",false);
+});
+function touch(id,key){
+ const b=$("#"+id);
+ const down=e=>{e.preventDefault();setKey(key,true);b.classList.add("active")};
+ const up=e=>{e.preventDefault();setKey(key,false);b.classList.remove("active")};
+ ["touchstart","mousedown"].forEach(x=>b.addEventListener(x,down,{passive:false}));
+ ["touchend","touchcancel","mouseup","mouseleave"].forEach(x=>b.addEventListener(x,up,{passive:false}));
+}
+touch("leftBtn","left");touch("rightBtn","right");touch("jumpBtn","jump");touch("runBtn","run");touch("attackBtn","attack");
+
+$("#howBtn").onclick=()=>alert("HOW TO PLAY\\n\\nMove: A/D or Arrow Keys\\nJump: W / Space / Up\\nRun: Shift\\nAttack: J or F / 👊\\n\\nCollect coins, avoid enemies, and reduce your opponent's HP to zero before time runs out.");
+document.querySelectorAll(".char").forEach(c=>c.onclick=()=>{document.querySelectorAll(".char").forEach(x=>x.classList.remove("sel"));c.classList.add("sel");selectedChar=c.dataset.char});
+</script>
+</body>
+</html>
